@@ -1,0 +1,10 @@
+<launch>
+
+  <node pkg="serial_test" name="serial_ros" type="serial_test_node" output="screen" respawn="true">
+    <param name = "port" value = "/dev/ttyACM0"/>
+    <param name = "baudrate" value = "B115200"/>
+    <param name = "looprate" value = "200"/>
+  </node>
+
+</launch>
+
