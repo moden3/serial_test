@@ -18,14 +18,6 @@ int main()
 
   while (1)
   {
-    static float ff[2]={0.0,100.0};
-    static int ii[2]={0,10000};
-    Ms.float_write(ff,2);
-    //Ms.int_write(ii,2);
-    ff[0]+=0.01;
-    ff[1]-=0.01;
-    ii[0]++;
-    ii[1]--;
     wait(0.1);
   }
 }

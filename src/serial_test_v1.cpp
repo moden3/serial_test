@@ -8,7 +8,7 @@
 #include <fcntl.h>
 #include <termios.h>
 
-#include <unistd.h> /////////////////////////////////
+#include <unistd.h>
 
 int BAUDRATE = B115200;
 
@@ -33,7 +33,7 @@ int open_serial(const char *device_name)
     return fd1;
 }
 
-int fd1;
+int fd1 = 0;
 char endmsg = '\n';
 bool floatflag = false;
 bool intflag = false;
@@ -137,18 +137,32 @@ int main(int argc, char **argv)
     arg_n.getParam("looprate", sub_loop_rate);
 
     fd1 = open_serial(port_name.c_str());
-    if (fd1 < 0)
+
+    while (ros::ok())
     {
-        ROS_ERROR("Serial Fail: cound not open %s", port_name.c_str());
-        printf("Serial Fail\n");
-        ros::shutdown();
+        fd1 = open_serial(port_name.c_str());
+        //ROS_ERROR("Serial Fail: cound not open %s", port_name.c_str());
+        //ros::shutdown();
+        printf("Serial Connecting\n");
+        sleep(1);
+        if (fd1 >= 0)
+            break;
     }
+
+    ROS_INFO("Serial Success");
 
     char buf_pub[256] = {0};
     int recv_data_size = 0;
     int arraysize = 0;
     int rec;
     ros::Rate loop_rate(sub_loop_rate);
+
+    // remove initial_buff_data
+    for (int i = 0; i < 1000; i++)
+    {
+        read(fd1, &buf_pub[0], sizeof(buf_pub));
+        usleep(1000);
+    }
 
     while (ros::ok())
     {

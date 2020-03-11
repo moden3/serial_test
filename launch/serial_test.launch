@@ -2,9 +2,9 @@
 
   <node pkg="serial_test" name="serial_ros" type="serial_test_node" output="screen" respawn="true">
     <param name = "port" value = "/dev/ttyACM0"/>
+    <!--param name = "port" value = "/dev/serial/by-id/usb-STMicroelectronics_STM32_STLink_066EFF495051717867111945-if02"/-->
     <param name = "baudrate" value = "B115200"/>
     <param name = "looprate" value = "200"/>
   </node>
 
 </launch>
-

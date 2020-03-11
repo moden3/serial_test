@@ -33,93 +33,84 @@ int open_serial(const char *device_name)
     return fd1;
 }
 
-int fd1;
+int fd1 = 0;
 char endmsg = '\n';
-bool writeflag = true;
+bool floatflag = false;
+bool intflag = false;
+bool charflag = false;
 int sleeptime = 5000; //us
+
+char *floattochar;
+char *inttochar;
+char *chartochar;
+int floatdatasize = 0;
+int intdatasize = 0;
+int chardatasize = 0;
 
 void float_callback(const std_msgs::Float32MultiArray &serial_msg)
 {
-    while(writeflag==false){
+    if (floatflag)
+    {
         usleep(sleeptime);
+        floatflag == false;
     }
-    writeflag == false;
-
-    int datasize = serial_msg.data.size();
-    char *floattochar;
-    floattochar = new char[datasize * 4 + 6];
+    delete[] floattochar;
+    floatdatasize = serial_msg.data.size();
+    floattochar = new char[floatdatasize * 4 + 6];
     floattochar[0] = 'f';
-    *(int *)(&floattochar[1]) = datasize;
+    *(int *)(&floattochar[1]) = floatdatasize;
     //memcpy(&floattochar[1], &datasize, 4);
-    for (int i = 0; i < datasize; i++)
+    for (int i = 0; i < floatdatasize; i++)
     {
         *(float *)(&floattochar[i * 4 + 5]) = serial_msg.data[i];
         //memcpy(&floattochar[i * 4 + 5], &serial_msg.data[i], 4);
     }
-    floattochar[datasize * 4 + 5] = endmsg;
+    floattochar[floatdatasize * 4 + 5] = endmsg;
 
-    int rec = write(fd1, floattochar, datasize * 4 + 6);
-    if (rec < 0)
-    {
-        ROS_ERROR_ONCE("Serial Fail: cound not write");
-    }
-    delete[] floattochar;
-    writeflag = true;
+    floatflag = true;
 }
 
 void int_callback(const std_msgs::Int32MultiArray &serial_msg)
 {
-    while(writeflag==false){
+    if (intflag)
+    {
         usleep(sleeptime);
+        intflag == false;
     }
-    writeflag == false;
-    
-    int datasize = serial_msg.data.size();
-    char *inttochar;
-    inttochar = new char[datasize * 4 + 6];
+    delete[] inttochar;
+    intdatasize = serial_msg.data.size();
+    inttochar = new char[intdatasize * 4 + 6];
     inttochar[0] = 'i';
-    *(int *)(&inttochar[1]) = datasize;
+    *(int *)(&inttochar[1]) = intdatasize;
     //memcpy(&inttochar[1], &datasize, 4);
-    for (int i = 0; i < datasize; i++)
+    for (int i = 0; i < intdatasize; i++)
     {
         *(int *)(&inttochar[i * 4 + 5]) = serial_msg.data[i];
         //memcpy(&inttochar[i * 4 + 5], &serial_msg.data[i], 4);
     }
-    inttochar[datasize * 4 + 5] = endmsg;
+    inttochar[intdatasize * 4 + 5] = endmsg;
 
-    int rec = write(fd1, inttochar, datasize * 4 + 6);
-    if (rec < 0)
-    {
-        ROS_ERROR_ONCE("Serial Fail: cound not write");
-    }
-    delete[] inttochar;
-    writeflag = true;
+    intflag = true;
 }
 
 void string_callback(const std_msgs::String &serial_msg)
 {
-    while(writeflag==false){
-        usleep(sleeptime);
-    }
-    writeflag == false;
-    
-    int datasize = serial_msg.data.size();
-    char *chartochar;
-    chartochar = new char[datasize + 6];
-    chartochar[0] = 'c';
-    *(int *)(&chartochar[1]) = datasize;
-    //memcpy(&chartochar[1], &datasize, 4);
-    std::string str = serial_msg.data;
-    memcpy(&chartochar[5], str.c_str(), datasize);
-    chartochar[datasize + 5] = endmsg;
-
-    int rec = write(fd1, chartochar, datasize + 6);
-    if (rec < 0)
+    if (charflag)
     {
-        ROS_ERROR_ONCE("Serial Fail: cound not write");
+        usleep(sleeptime);
+        charflag == false;
     }
     delete[] chartochar;
-    writeflag = true;
+    chardatasize = serial_msg.data.size();
+    chartochar = new char[chardatasize + 6];
+    chartochar[0] = 'c';
+    *(int *)(&chartochar[1]) = chardatasize;
+    //memcpy(&chartochar[1], &datasize, 4);
+    std::string str = serial_msg.data;
+    memcpy(&chartochar[5], str.c_str(), chardatasize);
+    chartochar[chardatasize + 5] = endmsg;
+
+    charflag = true;
 }
 
 int main(int argc, char **argv)
@@ -146,32 +137,38 @@ int main(int argc, char **argv)
     arg_n.getParam("looprate", sub_loop_rate);
 
     fd1 = open_serial(port_name.c_str());
-    if (fd1 < 0)
+
+    while(ros::ok())
     {
+        fd1 = open_serial(port_name.c_str());
         ROS_ERROR("Serial Fail: cound not open %s", port_name.c_str());
         printf("Serial Fail\n");
-        ros::shutdown();
+        //ros::shutdown();
+        sleep(1);
+        if(fd1 >= 0)
+            break;
     }
 
-    char *buf_pub;
-    buf_pub = new char[256];
+    ROS_INFO("Serial Connected");
+
+    char buf_pub[256] = {0};
     int recv_data_size = 0;
     int arraysize = 0;
+    int rec;
     ros::Rate loop_rate(sub_loop_rate);
+
     while (ros::ok())
     {
-        char buf[256] = {0};
-        int recv_data = read(fd1, buf, sizeof(buf));
-        //strcat(buf_pub,buf);
+        int recv_data = read(fd1, &buf_pub[recv_data_size], sizeof(buf_pub));
+
         if (recv_data > 0)
         {
-            for (int i = 0; i < recv_data; i++)
-            {
-                buf_pub[recv_data_size + i] = buf[i];
-            }
             recv_data_size += recv_data;
-            //if (buf[recv_data - 1] == endmsg)
-            if (buf_pub[recv_data_size - 1] == endmsg)
+            if (recv_data_size >= 256)
+            {
+                recv_data_size = 0;
+            }
+            else if (buf_pub[recv_data_size - 1] == endmsg)
             {
                 arraysize = *(int *)(&buf_pub[1]);
                 //memcpy(&arraysize, &(buf_pub[1]), 4);
@@ -192,7 +189,7 @@ int main(int argc, char **argv)
                     }
                     else
                     {
-                        ROS_INFO("Datasize Error");
+                        ROS_INFO("Datasize Error Float");
                     }
                     break;
                 case 'i':
@@ -209,7 +206,7 @@ int main(int argc, char **argv)
                     }
                     else
                     {
-                        ROS_INFO("Datasize Error");
+                        ROS_INFO("Datasize Error Int");
                     }
                     break;
                 case 'c':
@@ -221,23 +218,43 @@ int main(int argc, char **argv)
                     }
                     else
                     {
-                        ROS_INFO("Datasize Error");
+                        ROS_INFO("Datasize Error Char");
                     }
                     break;
                 default:
-                    ROS_INFO("Not float / int / char");
+                    ROS_INFO("Not Float / Int / Char");
                 }
-                delete[] buf_pub;
                 recv_data_size = 0;
-                buf_pub = new char[256];
             }
-            if (recv_data_size > 128)
+        }
+
+        // publish
+        if (floatflag)
+        {
+            rec = write(fd1, floattochar, floatdatasize * 4 + 6);
+            if (rec < 0)
             {
-                delete[] buf_pub;
-                recv_data_size = 0;
-                buf_pub = new char[256];
-                ROS_INFO("Buf Size Over");
+                ROS_ERROR_ONCE("Serial Fail: cound not write float");
             }
+            floatflag = false;
+        }
+        else if (intflag)
+        {
+            rec = write(fd1, inttochar, intdatasize * 4 + 6);
+            if (rec < 0)
+            {
+                ROS_ERROR_ONCE("Serial Fail: cound not write int");
+            }
+            intflag = false;
+        }
+        else if (charflag)
+        {
+            rec = write(fd1, chartochar, chardatasize + 6);
+            if (rec < 0)
+            {
+                ROS_ERROR_ONCE("Serial Fail: cound not write char");
+            }
+            charflag = false;
         }
 
         ros::spinOnce();
